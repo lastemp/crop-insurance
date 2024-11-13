@@ -1,20 +1,34 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.4.16 <0.9.0;
 
-enum InsurancePolicyTypes {CropInsurance}
-
-struct GpsCoordinates {
+contract Farmer {
+    struct GpsCoordinates {
       bytes latitude;
 	  bytes longitude;
     }
-struct FarmerData {
+    struct FarmerData {
       bytes nationalIdentityNumber;
 	  GpsCoordinates farmCoordinates;
       bool registered;
       bool insured;
       address owner;
     }
-struct InsuranceCompanyData {
+
+    FarmerData farmerData;
+
+    function registerFarmer(bytes memory nationalIdentityNumber_, GpsCoordinates memory farmCoordinates_) internal returns (FarmerData memory) {
+        require(nationalIdentityNumber_.length > 0, "National Identity Number has invalid value.");
+        farmerData.nationalIdentityNumber = nationalIdentityNumber_;
+		farmerData.farmCoordinates = farmCoordinates_;
+        farmerData.registered = true;
+        farmerData.owner = msg.sender;
+
+        return farmerData;
+    }
+}
+
+contract InsuranceCompany {
+    struct InsuranceCompanyData {
       bytes businessName;
 	  bytes businessIdentificationNumber;
       bool registered;
@@ -22,6 +36,31 @@ struct InsuranceCompanyData {
       address owner;
 	  address admin;
     }
+
+    InsuranceCompanyData insuranceCompanyData;
+	
+	// Constructor code is only run when the contract
+    // is created
+    constructor() {
+        insuranceCompanyData.admin = msg.sender;
+    }
+
+    function registerInsuranceCompany(bytes memory businessName_, bytes memory businessIdentificationNumber_) internal returns (InsuranceCompanyData memory) {
+        require(businessName_.length > 0, "Business Name has invalid value.");
+		require(businessIdentificationNumber_.length > 0, "Business Identification Number has invalid value.");
+        insuranceCompanyData.businessName = businessName_;
+		insuranceCompanyData.businessIdentificationNumber = businessIdentificationNumber_;
+        insuranceCompanyData.registered = true;
+        insuranceCompanyData.owner = msg.sender;
+
+        return insuranceCompanyData;
+    }
+	
+}
+
+contract InsurancePolicy {
+    enum InsurancePolicyTypes {CropInsurance}
+
 struct InsurancePolicyData {
       bytes referenceNumber;
 	  bytes startDate;
@@ -36,58 +75,6 @@ struct InsurancePolicyData {
       address admin;
     }
 
-contract Farmer {
-
-    FarmerData farmerData;
-
-    // Errors allow you to provide information about
-    // why an operation failed. They are returned
-    // to the caller of the function.
-    //error InvalidFarmerDetails(bytes nationalIdentityNumber, bytes errorDescription);
-
-    function registerFarmer(bytes memory nationalIdentityNumber_, GpsCoordinates memory farmCoordinates_) internal returns (FarmerData memory) {
-        //require(nationalIdentityNumber_.length > 0, InvalidMemberDetails(nationalIdentityNumber_, bytes("National Identity Number has invalid value.")));
-        require(nationalIdentityNumber_.length > 0, "National Identity Number has invalid value.");
-        farmerData.nationalIdentityNumber = nationalIdentityNumber_;
-		farmerData.farmCoordinates = farmCoordinates_;
-        farmerData.registered = true;
-        farmerData.owner = msg.sender;
-
-        return farmerData;
-    }
-}
-
-contract InsuranceCompany {
-
-    InsuranceCompanyData insuranceCompanyData;
-	
-	// Constructor code is only run when the contract
-    // is created
-    constructor() {
-        insuranceCompanyData.admin = msg.sender;
-    }
-
-    // Errors allow you to provide information about
-    // why an operation failed. They are returned
-    // to the caller of the function.
-    //error InvalidInsuranceCompanyDetails(bytes businessIdentificationNumber, bytes errorDescription);
-
-    function registerInsuranceCompany(bytes memory businessName_, bytes memory businessIdentificationNumber_) internal returns (InsuranceCompanyData memory) {
-        //require(businessIdentificationNumber_.length > 0, InvalidInsuranceCompanyDetails(businessIdentificationNumber_, bytes("Business Identification Number has invalid value.")));
-        require(businessName_.length > 0, "Business Name has invalid value.");
-		require(businessIdentificationNumber_.length > 0, "Business Identification Number has invalid value.");
-        insuranceCompanyData.businessName = businessName_;
-		insuranceCompanyData.businessIdentificationNumber = businessIdentificationNumber_;
-        insuranceCompanyData.registered = true;
-        insuranceCompanyData.owner = msg.sender;
-
-        return insuranceCompanyData;
-    }
-	
-}
-
-contract InsurancePolicy {
-
     InsurancePolicyData insurancePolicyData;
 	
 	// Constructor code is only run when the contract
@@ -96,16 +83,14 @@ contract InsurancePolicy {
         insurancePolicyData.admin = msg.sender;
     }
 
-    // Errors allow you to provide information about
-    // why an operation failed. They are returned
-    // to the caller of the function.
-    //error InvalidInsurancePolicyDetails(bytes referenceNumber, bytes errorDescription);
-
-    function registerInsurancePolicy(bytes memory referenceNumber_, bytes memory startDate_, bytes memory stopDate_, InsurancePolicyTypes memory policyType_, uint256 memory policyPremium_) internal returns (InsurancePolicyData memory) {
+    function registerInsurancePolicy(bytes memory referenceNumber_, bytes memory startDate_, bytes memory stopDate_, InsurancePolicyTypes policyType_, uint256 policyPremium_) internal returns (InsurancePolicyData memory) {
         require(msg.sender == insurancePolicyData.admin, "Signer address is not authorised to make changes.");
         require(referenceNumber_.length > 0, "Reference Number has invalid value.");
 		require(policyPremium_ > 0, "Policy premium amount must be greater than zero");
         insurancePolicyData.referenceNumber = referenceNumber_;
+        insurancePolicyData.startDate = startDate_;
+	    insurancePolicyData.stopDate = stopDate_;
+	    insurancePolicyData.policyType = policyType_;
         insurancePolicyData.active = true;
         insurancePolicyData.initialised = true;
 
@@ -176,13 +161,8 @@ contract Vault {
 contract CropInsuranceProgram is Farmer, InsuranceCompany, InsurancePolicy, Vault {
     struct CropInsuranceProgramData {
       mapping(address => FarmerData) farmers;
-      //mapping(bytes => InsuranceCompanyData) insuranceCompanies;
-      //mapping(bytes => InsurancePolicyData) insurancePolicies;
-	  InsuranceCompanyData insuranceCompany;
-	  InsurancePolicyData insurancePolicy;
-      //uint256 totalPolicyPremiumCollected;
-	  //uint256 totalPayments;
-      //uint16 totalPolicyHolders;
+	  InsuranceCompanyData insuranceCompanyData;
+	  InsurancePolicyData insurancePolicyData;
       address admin;
     }
 
@@ -211,60 +191,57 @@ contract CropInsuranceProgram is Farmer, InsuranceCompany, InsurancePolicy, Vaul
 		require(businessIdentificationNumber_.length > 0, "Business Identification Number has invalid value.");
 
         // Check if insurance company is already registered
-        //InsuranceCompanyData memory insuranceCompanyData = cropInsuranceProgram.insuranceCompanies[businessIdentificationNumber_];
-        //require(!insuranceCompanyData.registered, "Insurance company is already registered");
-		require(!insuranceCompany.registered, "Insurance company is already registered");
+        InsuranceCompanyData memory insuranceCompanyData = cropInsuranceProgram.insuranceCompanyData;
+		require(!insuranceCompanyData.registered, "Insurance company is already registered");
 
         // call registerInsuranceCompany in contract InsuranceCompany
-        //InsuranceCompanyData memory insuranceCompanyData_ = registerInsuranceCompany(businessName_, businessIdentificationNumber_);
-        //cropInsuranceProgram.insuranceCompanies[businessIdentificationNumber_] = insuranceCompanyData_;
-		insuranceCompany = registerInsuranceCompany(businessName_, businessIdentificationNumber_);
+		cropInsuranceProgram.insuranceCompanyData = registerInsuranceCompany(businessName_, businessIdentificationNumber_);
     }
 	
-	function registerNewInsurancePolicy(bytes memory referenceNumber_, bytes memory startDate_, bytes memory stopDate_, InsurancePolicyTypes memory policyType_, uint256 memory policyPremium_) external {
+	function registerNewInsurancePolicy(bytes memory referenceNumber_, bytes memory startDate_, bytes memory stopDate_, InsurancePolicyTypes policyType_, uint256 policyPremium_) external {
+        require(msg.sender == insurancePolicyData.admin, "Signer address is not authorised to make changes.");
         require(referenceNumber_.length > 0, "Reference Number has invalid value.");
 		require(policyPremium_ > 0, "Policy premium amount must be greater than zero");
 
         // Check if insurance policy is already registered
-        //InsurancePolicyData memory insurancePolicyData = cropInsuranceProgram.insurancePolicies[referenceNumber_];
-        //require(!insurancePolicyData.initialised, "Insurance policy is already registered");
-		require(!insurancePolicy.initialised, "Insurance policy is already registered");
+        InsurancePolicyData memory insurancePolicyData = cropInsuranceProgram.insurancePolicyData;
+		require(!insurancePolicyData.initialised, "Insurance policy is already registered");
 
-        // call registerInsuranceCompany in contract InsurancePolicy
-        //InsurancePolicyData memory insurancePolicyData_ = registerInsurancePolicy(referenceNumber_, startDate_, stopDate_, policyType_, policyPremium_);
-        //cropInsuranceProgram.insurancePolicies[referenceNumber_] = insurancePolicyData_;
-		insurancePolicy = registerInsurancePolicy(referenceNumber_, startDate_, stopDate_, policyType_, policyPremium_);
+        // call registerInsurancePolicy in contract InsurancePolicy
+		cropInsuranceProgram.insurancePolicyData = registerInsurancePolicy(referenceNumber_, startDate_, stopDate_, policyType_, policyPremium_);
     }
 	
 	function depositFunds() external payable {
-	    require(insurancePolicy.active, "Insurance policy must be active");
+	    require(insurancePolicyData.active, "Insurance policy must be active");
         require(msg.value > 0, "Deposit amount must be greater than zero");
 		FarmerData memory farmerData = cropInsuranceProgram.farmers[msg.sender];
         require(farmerData.registered, "Farmer is not registered");
 		require(!farmerData.insured, "Farmer is already insured");
-		require(msg.value == insurancePolicy.policyPremium, "Deposit amount must be equal to policy premium amount");
+		require(msg.value == insurancePolicyData.policyPremium, "Deposit amount must be equal to policy premium amount");
 
         deposit();
 		farmerData.insured = true;
-		insurancePolicy.totalPolicyHolders += 1;
-		insurancePolicy.totalPolicyPremiumCollected += msg.value;
+		insurancePolicyData.totalPolicyHolders += 1;
+		insurancePolicyData.totalPolicyPremiumCollected += msg.value;
         
     }
 	
 	function approveInsuranceCompany(bytes memory businessIdentificationNumber_) internal {
-	    require(msg.sender == insuranceCompany.admin, "Signer address is not authorised to make changes.");
+	    require(msg.sender == insuranceCompanyData.admin, "Signer address is not authorised to make changes.");
 		require(businessIdentificationNumber_.length > 0, "Business Identification Number has invalid value.");
-		require(insuranceCompany.businessIdentificationNumber == businessIdentificationNumber_, "Business Identification Number does not exist.");
-        insuranceCompany.approved = true;
+        require(compareBytes(insuranceCompanyData.businessIdentificationNumber, businessIdentificationNumber_), "Business Identification Number does not exist.");
+        insuranceCompanyData.approved = true;
     }
 	
 	function activateInsurancePolicy(bytes memory referenceNumber_) internal {
-	    require(msg.sender == insurancePolicy.admin, "Signer address is not authorised to make changes.");
-		require(!insurancePolicy.active, "Insurance policy is already active");
+	    require(msg.sender == insurancePolicyData.admin, "Signer address is not authorised to make changes.");
+		require(!insurancePolicyData.active, "Insurance policy is already active");
 		require(referenceNumber_.length > 0, "Reference Number has invalid value.");
-		require(insurancePolicy.referenceNumber == referenceNumber_, "Reference Number does not exist.");
-        insurancePolicy.active = true;
+        require(compareBytes(insurancePolicyData.referenceNumber, referenceNumber_), "Reference Number does not exist.");
+        insurancePolicyData.active = true;
     }
 	
-	// give insurance when rains fail
+	function compareBytes(bytes memory a, bytes memory b) private pure returns (bool) {
+        return keccak256(a) == keccak256(b);
+    }
 }
