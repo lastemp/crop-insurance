@@ -11,3 +11,9 @@ Below are some features contained in the program:
 - Register insurance policy
 - Activate insurance policy
 - Make deposits using Ether
+
+## Running the test program
+
+```
+npx hardhat test
+```
