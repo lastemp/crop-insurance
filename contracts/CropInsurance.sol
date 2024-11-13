@@ -226,14 +226,14 @@ contract CropInsuranceProgram is Farmer, InsuranceCompany, InsurancePolicy, Vaul
         
     }
 	
-	function approveInsuranceCompany(bytes memory businessIdentificationNumber_) internal {
+	function approveInsuranceCompany(bytes memory businessIdentificationNumber_) external {
 	    require(msg.sender == insuranceCompanyData.admin, "Signer address is not authorised to make changes.");
 		require(businessIdentificationNumber_.length > 0, "Business Identification Number has invalid value.");
         require(compareBytes(insuranceCompanyData.businessIdentificationNumber, businessIdentificationNumber_), "Business Identification Number does not exist.");
         insuranceCompanyData.approved = true;
     }
 	
-	function activateInsurancePolicy(bytes memory referenceNumber_) internal {
+	function activateInsurancePolicy(bytes memory referenceNumber_) external {
 	    require(msg.sender == insurancePolicyData.admin, "Signer address is not authorised to make changes.");
 		require(!insurancePolicyData.active, "Insurance policy is already active");
 		require(referenceNumber_.length > 0, "Reference Number has invalid value.");
