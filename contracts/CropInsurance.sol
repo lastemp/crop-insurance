@@ -244,4 +244,16 @@ contract CropInsuranceProgram is Farmer, InsuranceCompany, InsurancePolicy, Vaul
 	function compareBytes(bytes memory a, bytes memory b) private pure returns (bool) {
         return keccak256(a) == keccak256(b);
     }
+	
+	function getFarmerData(address farmer_) external view returns (FarmerData memory) {
+        return cropInsuranceProgram.farmers[farmer_];
+    }
+	
+	function getInsuranceCompanyData() external view returns (InsuranceCompanyData memory) {
+        return cropInsuranceProgram.insuranceCompanyData;
+    }
+	
+	function getInsurancePolicyData() external view returns (InsurancePolicyData memory) {
+        return cropInsuranceProgram.insurancePolicyData;
+    }
 }
